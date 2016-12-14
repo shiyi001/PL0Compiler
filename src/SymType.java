@@ -4,7 +4,7 @@
  */
 public enum SymType {
 	BEG, END, IF, THEN, ELS, CON, PROC, VAR, DO, WHI, CAL, REA, WRI, ODD,
-	//begin, end, if, then, else, const, var, do, while, call, read, write, odd
+	//begin, end, if, then, else, const, procedure, var, do, while, call, read, write, odd
 	EQU, LES, LESE, LARE, LAR, NEQE, ADD, SUB, MUL, DIV, 
 	//=, <, <=, >=, >, <>, +, -, *, /
 	SYM, CONST,

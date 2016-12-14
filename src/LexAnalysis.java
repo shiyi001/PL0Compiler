@@ -6,9 +6,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * created by shiyi on 2016/12/14
+ * 词法分析程序
+ */
+
 public class LexAnalysis {
 	private String[] keyWords = {
-		"begin", "end", "if", "then", "else", "const", "var", "do", "while", "call", "read", "write", "odd"
+		"begin", "end", "if", "then", "else", "const", "procedure", "var", "do", "while", "call", "read", "write", "odd"
 	};
 
 	private List<Token> allToken;
@@ -34,6 +39,7 @@ public class LexAnalysis {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println(buffer);
         doAnalysis();
 	}
 
@@ -43,19 +49,22 @@ public class LexAnalysis {
     
 	private void doAnalysis() {
 		while (searchPtr < buffer.length) {
-            allToken.add(analysis());
+            Token one = analysis();
+            System.out.println(one.getSt() + " " + one.getLine() + " " + one.getValue());
+            //allToken.add(one);
         }
 	}
 
 	private Token analysis() {
 		strToken = "";
-        while (ch == ' ' || ch == '\n' || ch == '\t' || ch == '\0') {
+		getChar();
+        while ((ch == ' ' || ch == '\n' || ch == '\t' || ch == '\0') && searchPtr < buffer.length) {
             if (ch == '\n') {
                 line++;
             }
             getChar();
         }
-        if (ch == '\n') { //到达文件末尾
+        if (ch == '$' && searchPtr >= buffer.length) { //到达文件末尾
             return new Token(SymType.EOF, line, "-1");
         }
         if (isLetter()) { //首位为字母，可能为保留字或者变量名
@@ -135,6 +144,8 @@ public class LexAnalysis {
 		if (searchPtr < buffer.length) {
 			ch = buffer[searchPtr];
 			searchPtr++;
+		} else {
+			ch = '$';
 		}
 		return ch;
 	}
