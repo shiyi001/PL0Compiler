@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * created by shiyi on 2016/12/14
  * 符号表
@@ -10,7 +13,7 @@ public class AllSymbol {
     private int proc=3;             //过程类型用3表示
 
 	public AllSymbol() {
-		allSymbol = new AllSymbol();
+		allSymbol = new ArrayList<PerSymbol>();
 	}
 
 	//向符号表中插入常量
