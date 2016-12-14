@@ -11,6 +11,8 @@ public enum SymType {
 	//标识符， 常量
 	CEQU, COMMA, SEMIC, POI, LBR, RBR,
 	//:=, ',' , ';', '.', '(', ')'
-	COL;
+	COL,
 	//:
+	EOF;
+	//end of file
 }
