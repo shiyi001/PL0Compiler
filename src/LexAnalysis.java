@@ -49,9 +49,9 @@ public class LexAnalysis {
     
 	private void doAnalysis() {
 		while (searchPtr < buffer.length) {
-            Token one = analysis();
-            System.out.println(one.getSt() + " " + one.getLine() + " " + one.getValue());
-            //allToken.add(one);
+            //Token one = analysis();
+            //System.out.println(one.getSt() + " " + one.getLine() + " " + one.getValue());
+            allToken.add(analysis());
         }
 	}
 
