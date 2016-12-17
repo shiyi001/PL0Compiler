@@ -10,6 +10,10 @@ public class GSAnalysis {
 	private boolean errorHappen = false;
 	private int tokenPtr = 0;
 
+	private int level = 0;
+	private int address = 0;
+	private int addIncrement = 1;
+	
 	GSAnalysis(File file) {
 		lex = new LexAnalysis(file);
 		allToken = lex.getAllToken();
@@ -17,6 +21,446 @@ public class GSAnalysis {
 		allPcode = new AllPcode();
 
 		allSymbol = new AllSymbol();
+	}
+
+	private void program() {
+		//<主程序>::=<分程序>.
+		block();
+		if (allToken.get(tokenPtr).getSt() == SymType.POI) {
+			tokenPtr++;
+			if (allToken.get(tokenPtr).getSt() != SymType.EOF) {
+				errorHandle(18, "");
+			}
+		} else {
+			errorHandle(17, "");
+		}
+	}
+
+	private void block() {
+		//<分程序>::=[<常量说明部分>][<变量说明部分>][<过程说明部分>]<程序体>
+		int address_cp = address;
+		int start = allSymbol.getPtr();
+		int pos = 0;
+		if (start > 0) {
+			pos = allSymbol.getLevelProc(level);
+			start = start - allSymbol.getAllSymbol().get(pos).getSize();
+		}
+		if (start == 0) {
+			address = 3;
+		} else {
+			address = 3 + allSymbol.getAllSymbol().get(pos).getSize();
+		}
+
+		int tmpPcodePtr = allPcode.getPcodePtr();
+		allPcode.gen(Operator.JMP, 0, 0);
+
+		if (allToken.get(tokenPtr).getSt() == SymType.CON) {
+			conDeclare();
+		}
+		if (allToken.get(tokenPtr).getSt() == SymType.VAR) {
+			varDeclare();
+		}
+		if (allToken.get(tokenPtr).getSt() == SymType.PROC) {
+			proc();
+			level--;
+		}
+
+		if (start > 0) {
+			for (int i = 0; i < allSymbol.getAllSymbol().get(pos).getSize(); i++) {
+				allPcode.gen(Operator.STO, 0, allSymbol.getAllSymbol().get(pos).getSize() + 3 - 1 - i);
+			}
+		}
+		allPcode.getAllPcode().get(tmpPcodePtr).setA(allPcode.getPcodePtr());
+		allPcode.gen(Operator.INT, 0, address);
+		if (start == 0) {
+			//
+		} else {
+			allSymbol.getAllSymbol().get(pos).setValue(allPcode.getPcodePtr() - 1 - allSymbol.getAllSymbol().get(pos).getSize());
+		}
+
+		body();
+		allPcode.gen(Operator.OPR, 0, 0);
+
+		address = address_cp;
+		allSymbol.setPtr(start);
+	}
+
+	private void conDeclare() {
+		//<常量说明部分>::=const <常量定义>{,<常量定义>}
+		if (allToken.get(tokenPtr).getSt() == SymType.CON) {
+			tokenPtr++;
+			conHandle();
+			while (allToken.get(tokenPtr).getSt() == SymType.COMMA) {
+				tokenPtr++;
+				conHandle();
+			}
+			if (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
+				tokenPtr++;
+			} else { //缺少；
+				errorHandle(0, "");
+			}
+		} else { //缺少const
+			errorHandle(-1, "");
+		}
+	}
+
+	private void conHandle() {
+		//<常量定义>::=<标识符>=<无符号整数>
+		String name;
+		int value;
+		if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+			name = allToken.get(tokenPtr).getValue();
+			tokenPtr++;
+			if (allToken.get(tokenPtr).getSt() == SymType.EQU) {
+				tokenPtr++;
+				if (allToken.get(tokenPtr).getSt() == SymType.CONST) {
+					value = Integer.parseInt(allToken.get(tokenPtr).getValue());
+					if (allSymbol.isNowExists(name, level)) {
+						errorHandle(15, name);
+					}
+					allSymbol.enterConst(name, level, value, address);
+					//address += addIncrement;
+					tokenPtr++;
+				}
+			} else { //赋值没用=
+				errorHandle(3, "");
+			}
+		} else { //标识符不合法
+			errorHandle(1, "");
+		}
+	}
+
+	private void varDeclare() {
+		//<变量说明部分>::=var<标识符>{,<标识符>}
+		String name;
+		int value;
+		if (allToken.get(tokenPtr).getSt() == SymType.VAR) {
+			tokenPtr++;
+			if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+				name = allToken.get(tokenPtr).getValue();
+				if (allSymbol.isNowExists(name, address)) {
+					errorHandle(15, name);
+				}
+				allSymbol.enterVar(name, level, address);
+				tokenPtr++;
+				while (allToken.get(tokenPtr).getSt() == SymType.COMMA) {
+					tokenPtr++;
+					if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+						name = allToken.get(tokenPtr).getValue();
+						if (allSymbol.isNowExists(name, address)) {
+							errorHandle(15, name);
+						}
+						allSymbol.enterVar(name, level, address);
+						tokenPtr++;
+					} else { //非法标识符
+						errorHandle(1, "");
+						return;
+					}
+				}
+				if (allToken.get(tokenPtr).getSt() != SymType.SEMIC) {
+					//缺少；
+					errorHandle(0, "");
+					return;
+				} else {
+					tokenPtr++;
+				}
+			} else { //非法标识符
+				errorHandle(1, "");
+				return;
+			}
+		} else { //缺少var
+			errorHandle(-1, "");
+			return;
+		}
+	}
+
+	private void proc() {
+		//<过程说明部分>::=<过程首部><分程序>{;<过程说明部分>};
+		//<过程首部>::=procedure<标识符>;
+		if (allToken.get(tokenPtr).getSt() == SymType.PROC) {
+			tokenPtr++;
+			int count = 0; //记录参数个数
+			int pos; //记录该过程在符号表中的位置
+			if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+				String name = allToken.get(tokenPtr).getValue();
+				if (allSymbol.isNowExists(name, level)) {
+					errorHandle(15, name);
+				}
+				pos = allSymbol.getPtr();
+				allSymbol.enterProc(name, level, address);
+				level++;
+				tokenPtr++;
+				if (allToken.get(tokenPtr).getSt() == SymType.LBR) {
+					tokenPtr++;
+					if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+						allSymbol.enterVar(allToken.get(tokenPtr).getValue(), level, 3 + address);
+						count++;
+						allSymbol.getAllSymbol().get(pos).setSize(count);
+						tokenPtr++;
+						while (allToken.get(tokenPtr).getSt() == SymType.COMMA) {
+							tokenPtr++;
+							if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+								allSymbol.enterVar(allToken.get(tokenPtr).getValue(), level, 3 + address);
+								count++;
+								allSymbol.getAllSymbol().get(pos).setSize(count);
+								tokenPtr++;
+							} else {
+								errorHandle(1, "");
+								return;
+							}
+						}
+						if (allToken.get(tokenPtr).getSt() == SymType.RBR) {
+							tokenPtr++;
+							if (allToken.get(tokenPtr).getSt() != SymType.SEMIC) {
+								errorHandle(0, "");
+								return;
+							} else {
+								tokenPtr++;
+								block();
+								while (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
+									tokenPtr++;
+									proc();
+								}
+							}
+						} else { //缺少）
+							errorHandle(5, "");
+							return;
+						}
+					} else { //缺少（
+						errorHandle(4, "");
+						return;
+					}
+				} else { //标识符不合法
+					errorHandle(1, "");
+					return;
+				}
+			} else {
+				errorHandle(-1, "");
+				return;
+			}
+		}
+	}
+
+	private void body() {
+		//<程序体>::=begin<语句>{;<语句>}end
+		if (allToken.get(tokenPtr).getSt() == SymType.BEG) {
+			tokenPtr++;
+			statement();
+			while (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
+				tokenPtr++;
+				statement();
+			}
+			if (allToken.get(tokenPtr).getSt() == SymType.END) {
+				tokenPtr++;
+			} else { //缺少end
+				errorHandle(7, "");
+				return;
+			}
+		} else { //缺少begin
+			errorHandle(6, "");
+			return;
+		}
+	}
+
+	private void statement() {
+		//<语句>::=<赋值语句> | <条件语句> | <当循环语句> | <过程调用语句> | <复合语句> | <读语句> | <写语句> | <空>
+		if (allToken.get(tokenPtr).getSt() == SymType.IF) {
+			//<条件语句>::=if<条件>then<语句>else<语句>
+			tokenPtr++;
+			condition();
+			if (allToken.get(tokenPtr).getSt() == SymType.THEN) {
+				int pos1 = allPcode.getPcodePtr();
+				allPcode.gen(Operator.JPC, 0, 0);
+				tokenPtr++;
+				statement();
+				int pos2 = allPcode.getPcodePtr();
+				allPcode.gen(Operator.JMP, 0, 0);
+				allPcode.getAllPcode().get(pos1).setA(allPcode.getPcodePtr());
+				allPcode.getAllPcode().get(pos2).setA(allPcode.getPcodePtr());
+				if (allToken.get(tokenPtr).getSt() == SymType.ELS) {
+					tokenPtr++;
+					statement();
+					allPcode.getAllPcode().get(pos2).setA(allPcode.getPcodePtr());
+				}
+			} else {
+				errorHandle(8, "");
+				return;
+			}
+		} else if (allToken.get(tokenPtr).getSt() == SymType.WHI) {
+			//<当循环语句>::=while<条件>do<语句>
+			int pos1 = allPcode.getPcodePtr();
+			tokenPtr++;
+			condition();
+			if (allToken.get(tokenPtr).getSt() == SymType.DO) {
+				int pos2 = allPcode.getPcodePtr();
+				allPcode.gen(Operator.JPC, 0, 0);
+				tokenPtr++;
+				statement();
+				allPcode.gen(Operator.JMP, 0, pos1);
+				allPcode.getAllPcode().get(pos2).setA(allPcode.getPcodePtr());
+			} else {
+				errorHandle(9, "");
+				return;
+			}
+		} else if (allToken.get(tokenPtr).getSt() == SymType.CAL) {
+			//<过程调用语句>::=call<标识符>
+			tokenPtr++;
+			int count = 0; //参数数目
+			PerSymbol tmp;
+			if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+				String name = allToken.get(tokenPtr).getValue();
+				if (allSymbol.isPreExists(name, level)) {
+					tmp = allSymbol.getSymbol(name);
+					if (tmp.getType() == allSymbol.getProc()) {
+						;
+					} else {
+						errorHandle(11, "");
+						return;
+					}
+				} else { //不存在该过程
+					errorHandle(10, "");
+					return;
+				}
+				tokenPtr++;
+				if (allToken.get(tokenPtr).getSt() == SymType.LBR) {
+					tokenPtr++;
+					if (allToken.get(tokenPtr).getSt() == SymType.RBR) {
+						tokenPtr++;
+						allPcode.gen(Operator.CAL, level - tmp.getLevel(), tmp.getValue());
+					} else {
+						expression();
+						count++;
+						while (allToken.get(tokenPtr).getSt() == SymType.COMMA) {
+							tokenPtr++;
+							expression();
+							count++;
+						}
+						if (count != tmp.getSize()) {
+							errorHandle(16, "");
+							return;
+						}
+						allPcode.gen(Operator.CAL, level - tmp.getLevel(), tmp.getValue());
+						if (allToken.get(tokenPtr).getSt() == SymType.RBR) {
+							tokenPtr++;
+						} else {
+							errorHandle(5, "");
+							return;
+						}
+					} 
+				} else {
+					errorHandle(4, "");
+					return;
+				}
+			} else {
+				errorHandle(1, "");
+				return;
+			}
+		} else if (allToken.get(tokenPtr).getSt() == SymType.REA){
+			//<读语句>::=read'('<标识符>{,<标识符>}')'
+			tokenPtr++;
+			if (allToken.get(tokenPtr).getSt() == SymType.LBR) {
+				tokenPtr++;
+				if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+					String name = allToken.get(tokenPtr).getValue();
+					if (!allSymbol.isPreExists(name, level)) {
+						errorHandle(10, "");
+						return;
+					} else {
+						PerSymbol tmp = allSymbol.getSymbol(name);
+						if (tmp.getType() == allSymbol.getVar()) {
+							allPcode.gen(Operator.OPR, 0, 16);
+							allPcode.gen(Operator.STO, level - tmp.getLevel(), tmp.getAddress());
+						} else {
+							errorHandle(12, "");
+							return;
+						}
+					}
+				}
+				tokenPtr++;
+				while (allToken.get(tokenPtr).getSt() == SymType.COMMA) {
+					tokenPtr++;
+					if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+						String name = allToken.get(tokenPtr).getValue();
+						if (!allSymbol.isPreExists(name, level)) {
+							errorHandle(10, "");
+							return;
+						} else {
+							PerSymbol tmp = allSymbol.getSymbol(name);
+							if (tmp.getType() == allSymbol.getVar()) {
+								allPcode.gen(Operator.OPR, 0, 16);
+								allPcode.gen(Operator.STO, level - tmp.getLevel(), tmp.getAddress());
+							} else {
+								errorHandle(12, "");
+								return;
+							}
+						}
+						tokenPtr++;
+					} else {
+						errorHandle(1, "");
+						return;
+					}
+				}
+				if (allToken.get(tokenPtr).getSt() == SymType.RBR) {
+					tokenPtr++;
+				} else {
+					errorHandle(5, "");
+					return;
+				}
+			} else {
+				errorHandle(4, "");
+				return;
+			}
+		} else if (allToken.get(tokenPtr).getSt() == SymType.WRI) {
+			//<写语句>::=write '('<表达式>{,<表达式>}')'
+			tokenPtr++;
+			if (allToken.get(tokenPtr).getSt() == SymType.LBR) {
+				tokenPtr++;
+				expression();
+				allPcode.gen(Operator.OPR, 0, 14);
+				while (allToken.get(tokenPtr).getSt() == SymType.COMMA) {
+					tokenPtr++;
+					expression();
+					allPcode.gen(Operator.OPR, 0, 14);
+				}
+				allPcode.gen(Operator.OPR, 0, 15);
+				if (allToken.get(tokenPtr).getSt() == SymType.RBR) {
+					tokenPtr++;
+				} else { //缺少)
+					errorHandle(5, "");
+					return;
+				}
+			} else { //缺少（
+				errorHandle(4, "");
+			}
+		} else if (allToken.get(tokenPtr).getSt() == SymType.BEG) {
+			body();
+		} else if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+			//<赋值语句>::=<标识符>:=<表达式>
+			String name = allToken.get(tokenPtr).getValue();
+			tokenPtr++;
+			if (allToken.get(tokenPtr).getSt() == SymType.CEQU) {
+				tokenPtr++;
+				expression();
+				if (!allSymbol.isPreExists(name, level)) {
+					errorHandle(14, name);
+					return;
+				} else {
+					PerSymbol tmp = allSymbol.getSymbol(name);
+					if (tmp.getType() == allSymbol.getVar()) {
+						allPcode.gen(Operator.STO, level - tmp.getLevel(), tmp.getAddress());
+					} else {
+						errorHandle(13, name);
+						return;
+					}
+				}
+			} else {
+				errorHandle(3, "");
+				return;
+			}
+		} else {
+			errorHandle(1, "");
+			return;
+		}
 	}
 
 	private void condition() {
@@ -121,9 +565,9 @@ public class GSAnalysis {
 				System.out.print("ERROR" + k + "in line" + allToken.get(tokenPtr).getLine() + ":");
 				System.out.println("illegal compare symbol"); 
 				break;
-			case 3: //赋值没用:=
+			case 3: //赋值没用=
 				System.out.print("ERROR" + k + "in line" + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Assign must be :="); 
+				System.out.println("Assign must be ="); 
 				break;
 			case 4: //缺少（
 				System.out.print("ERROR" + k + "in line" + allToken.get(tokenPtr).getLine() + ":");
@@ -176,6 +620,14 @@ public class GSAnalysis {
 			case 16: //调用函数参数错误
 				System.out.print("ERROR" + k + "in line" + allToken.get(tokenPtr).getLine() + ":");
 				System.out.println("Number of parameters of procedure " + name + "is incorrect"); 
+				break;
+			case 17: //缺少.
+				System.out.print("ERROR" + k + "in line" + allToken.get(tokenPtr).getLine() + ":");
+				System.out.println("Missing ."); 
+				break;
+			case 18: //多余代码
+				System.out.print("ERROR" + k + "in line" + allToken.get(tokenPtr).getLine() + ":");
+				System.out.println("too much code after ."); 
 				break;
 		}
 	}
