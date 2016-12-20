@@ -13,7 +13,7 @@ import java.util.List;
 
 public class LexAnalysis {
 	private String[] keyWords = {
-		"begin", "end", "if", "then", "else", "const", "procedure", "var", "do", "while", "call", "read", "write", "odd"
+		"begin", "end", "if", "then", "else", "const", "procedure", "var", "do", "while", "call", "read", "write", "odd", "repeat", "until"
 	};
 
 	private List<Token> allToken;

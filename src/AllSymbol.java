@@ -20,19 +20,19 @@ public class AllSymbol {
 
 	//向符号表中插入常量
 	public void enterConst(String name, int level, int value, int address) {
-        allSymbol.add(new PerSymbol(con, value, level, address, 4, name));
+        allSymbol.add(new PerSymbol(con, value, level, address, 0, name));
         ptr++;
     }
 
     //向符号表中插入变量
     public void enterVar(String name, int level, int address) {
-    	allSymbol.add(new PerSymbol(var, level, address, 4, name));
+    	allSymbol.add(new PerSymbol(var, level, address, 0, name));
         ptr++;
     }
 
     //向符号表中插入过程
     public void enterProc(String name, int level, int address) {
-    	allSymbol.add(new PerSymbol(proc, level, address, 4, name));
+    	allSymbol.add(new PerSymbol(proc, level, address, 0, name));
         ptr++;
     }
 
