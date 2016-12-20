@@ -7,7 +7,7 @@ public class PerSymbol {
     private int value;          //表示常量或变量的值
     private int level;          //嵌套层次
     private int address;        //相对于所在嵌套过程基地址的地址
-    private int size;           //表示常量，变量，过程所占的大小
+    private int size;           //表示常量，变量，过程所占的大小(这一项其实默认为0， 并没有用到)
     private String name;        //变量、常量或过程名
 
     public PerSymbol(int _type, int _value, int _level, int _address, int _size, String _name) {
@@ -20,7 +20,8 @@ public class PerSymbol {
     }
 
     public PerSymbol(int _type, int _level, int _address, int _size, String _name) {
-    	//变量刚声明时没有初始值，过程声明没有值
+    	//专为变量声明和过程声明写的构造函数
+        //变量和过程声明时没有初始值
     	type = _type;
     	level = _level;
     	address = _address;

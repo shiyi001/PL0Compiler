@@ -3,12 +3,12 @@ import java.util.List;
 
 public class GSAnalysis {
 	LexAnalysis lex;
-	List<Token> allToken;
-	AllPcode allPcode;
-	AllSymbol allSymbol;
+	List<Token> allToken; //保存词法分析结果
+	AllPcode allPcode; //保存生成的Pcode
+	AllSymbol allSymbol; //符号表管理
 
-	private boolean errorHappen = false;
-	private int tokenPtr = 0;
+	private boolean errorHappen = false; //记录编译过程中是否发生错误
+	private int tokenPtr = 0; //指向当前token的指针
 
 	private int level = 0;
 	private int address = 0;
@@ -43,20 +43,18 @@ public class GSAnalysis {
 
 	private void block() {
 		//<分程序>::=[<常量说明部分>][<变量说明部分>][<过程说明部分>]<语句>
-		int address_cp = address;
-		int start = allSymbol.getPtr();
-		int pos = 0;
+		int address_cp = address; //保存之前的address值
+		
+		//初始化本层的相关变量
+		int start = allSymbol.getPtr(); //本层变量声明的初始位置
+		int pos = 0; //本层过程声明在符号表中的位置
+		address = 3; //默认已3开始，前几位存放一些跳转关键变量，如原来的base（基地址），pc（程序计数器）等
 		if (start > 0) {
 			pos = allSymbol.getLevelProc(level);
-			start = start - allSymbol.getAllSymbol().get(pos).getSize();
-		}
-		if (start == 0) {
-			address = 3;
-		} else {
-			address = 3 + allSymbol.getAllSymbol().get(pos).getSize();
 		}
 
-		int tmpPcodePtr = allPcode.getPcodePtr();
+		//设置跳转指令，跳过声明部分，后面回填
+		int tmpPcodePtr = allPcode.getPcodePtr(); 
 		allPcode.gen(Operator.JMP, 0, 0);
 
 		if (allToken.get(tokenPtr).getSt() == SymType.CON) {
@@ -69,24 +67,17 @@ public class GSAnalysis {
 			proc();
 		}
 
-		if (start > 0) {
-			for (int i = 0; i < allSymbol.getAllSymbol().get(pos).getSize(); i++) {
-				allPcode.gen(Operator.STO, 0, allSymbol.getAllSymbol().get(pos).getSize() + 3 - 1 - i);
-			}
-		}
-		allPcode.getAllPcode().get(tmpPcodePtr).setA(allPcode.getPcodePtr());
-		allPcode.gen(Operator.INT, 0, address);
-		if (start == 0) {
-			//
-		} else {
+		allPcode.getAllPcode().get(tmpPcodePtr).setA(allPcode.getPcodePtr()); //回填跳转地址
+		allPcode.gen(Operator.INT, 0, address); //申请空间
+		if (start != 0) {
+			//如果不是主函数，则需要在符号表中的value填入该过程在Pcode代码中的起始位置
 			allSymbol.getAllSymbol().get(pos).setValue(allPcode.getPcodePtr() - 1 - allSymbol.getAllSymbol().get(pos).getSize());
 		}
 
 		statement();
-		allPcode.gen(Operator.OPR, 0, 0);
+		allPcode.gen(Operator.OPR, 0, 0); //过程结束
 
 		address = address_cp;
-		allSymbol.setPtr(start);
 	}
 
 	private void conDeclare() {
@@ -267,11 +258,9 @@ public class GSAnalysis {
 		//<复合语句>::=begin<语句>{;<语句>}end
 		if (allToken.get(tokenPtr).getSt() == SymType.BEG) {
 			tokenPtr++;
-			//System.out.println(allToken.get(tokenPtr).getLine() + " " + allToken.get(tokenPtr).getSt());
 			statement();
 			while (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
 				tokenPtr++;
-				//System.out.println(allToken.get(tokenPtr).getLine() + " " + allToken.get(tokenPtr).getSt());
 				statement();
 			}
 			if (allToken.get(tokenPtr).getSt() == SymType.END) {

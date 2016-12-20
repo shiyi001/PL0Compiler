@@ -16,12 +16,12 @@ public class LexAnalysis {
 		"begin", "end", "if", "then", "else", "const", "procedure", "var", "do", "while", "call", "read", "write", "odd", "repeat", "until"
 	};
 
-	private List<Token> allToken;
-	private char ch = ' ';
-	private int searchPtr = 0;
-	private char[] buffer;
-	private int line = 1;
-	private String strToken;
+	private List<Token> allToken; //存放所有分析出来的token
+	private char ch = ' '; //当前字符 
+	private int searchPtr = 0; //指向当前字符的指针
+	private char[] buffer; //存放所有源代码
+	private int line = 1; //当前行
+	private String strToken; //当前正在进行词法分析的字符串
 
 	public LexAnalysis(File file) {
 		init(); 
@@ -74,10 +74,11 @@ public class LexAnalysis {
             }
             retract();
             for (int i = 0; i < keyWords.length; i++) {
-                if (strToken.equals(keyWords[i])) {
+                if (strToken.equals(keyWords[i])) { //说明是保留字
                     return new Token(SymType.values()[i], line, "-");
                 }
             }
+            //不是保留字，则为标识符，需要保存值
             return new Token(SymType.SYM, line, strToken);
         } else if (isDigit()) { //首位为数字，即为整数
         	while (isDigit()) {
