@@ -3,9 +3,9 @@
  *token类
  */
 public class Token {
-	private SymType st;
-	private int line;
-	private String value;
+	private SymType st; //token的类别
+	private int line; //token所在行，错误处理使用
+	private String value; //token的值，只有标识符和常量有值
 
 	public Token(SymType _st, int _line, String _value) {
 		st = _st;
