@@ -734,6 +734,10 @@ public class GSAnalysis {
 		}
 	}
 
+	public List<Token> getAllToken() {
+		return allToken;
+	}
+
 	public void showAllSymbol() {
 		List<PerSymbol> display = allSymbol.getAllSymbol();
 		for (int i = 0; i < display.size(); i++) {
@@ -745,12 +749,20 @@ public class GSAnalysis {
 		}
 	}	
 
+	public List<PerSymbol> getAllSymbol() {
+		return allSymbol.getAllSymbol();
+	}
+
 	public void showAllPcode() {
 		List<PerPcode> display = allPcode.getAllPcode();
 		for (int i = 0; i < display.size(); i++) {
 			System.out.print(i + " " + display.get(i).getF() + "     ");
 			System.out.println(" " + display.get(i).getL() + " " +display.get(i).getA());
 		}
+	}
+
+	public List<PerPcode> getAllPcode() {
+		return allPcode.getAllPcode();
 	}
 
 	public void interpreter() {
