@@ -1,0 +1,10 @@
+const c1=1,c2=2;
+var v1,v2;
+begin
+	read(v1,v2)
+	v1:=v1+c1
+	v2:=v2+c2
+	write(v1,v2)
+end.
+const e = 1;
+	
