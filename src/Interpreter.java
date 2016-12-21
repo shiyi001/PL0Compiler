@@ -1,14 +1,31 @@
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
 public class Interpreter {
 	private int STACK_SIZE = 1000;
 	private int[] dataStack = new int[STACK_SIZE];
-	List<PerPcode> pcode;
+	private List<PerPcode> pcode;
+      private List<Integer> input;
+      private int inputPtr;
+      private List <String> output;
+
+      public Interpreter() {
+
+      }
+
+      public Interpreter(List<Integer> _input) {
+            input = _input;
+            output = new ArrayList<String>();
+      }
 
 	public void setAllPcode(AllPcode allPcode) {
 		pcode = allPcode.getAllPcode();
 	}
+
+      public List<String> getOutput() {
+            return output;
+      }
 
 	public void interpreter() {
 		int pc = 0; //程序计数器，指向下一条指令
@@ -17,12 +34,6 @@ public class Interpreter {
 		do {
 			PerPcode currentPcode = pcode.get(pc);
 			pc++;
-			/***********打印程序运行栈debug
-			for (int i = 0; i < top; i ++) {
-				System.out.print(dataStack[i] + " ");
-			}
-			System.out.println();
-			**********/
 			if (currentPcode.getF() == Operator.LIT) {
                         //LIT：将常量送到运行栈S的栈顶，这时A段为常量值
 				dataStack[top] = currentPcode.getA();
@@ -124,15 +135,19 @@ public class Interpreter {
                               //OPR 0 14  栈顶值输出至屏幕
                    		System.out.print(dataStack[top - 1]);
                    		System.out.print(" ");
+                              //output.add(dataStack[top - 1] + " ");
                    		break;
                    	case 15:
                               //OPR 0 15  屏幕输出换行
                    		System.out.println();
+                              //output.add("\n");
                    		break;
                    	case 16:
                               //OPR 0 16  从命令行读入一个输入置于栈顶
+                              System.out.println("please input a number");
                    		Scanner s = new Scanner(System.in);
                    		dataStack[top] = s.nextInt();
+                              //dataStack[top] = input.get(inputPtr++);
                    		top++;
                    		break;
 				}

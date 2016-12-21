@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -67,6 +68,11 @@ public class MyCompiler extends JFrame{
     private List<Token> allToken;
     private List<PerSymbol> allSymbol;
     private List<PerPcode> allPcode;
+    private List<String> errors;
+    private String consoleMessage;
+    private int readNum = 0;
+    private List<String> output;
+    private boolean success = false;
 
     public MyCompiler() {
     	init();
@@ -211,8 +217,38 @@ public class MyCompiler extends JFrame{
 	    		compile();
 	    	}
 	    });
+
+	    runItem.addActionListener(new ActionListener() {
+	    	public void actionPerformed(ActionEvent e) {
+	    		if (success) {
+	    			//该函数还没有做好
+	    			run();
+	    		}
+	    	}
+	    });
 	}
 
+	//运行Pcode，目前不知道怎么传递输入，尤其是输入写在循环中时。
+	private void run() {
+		gsa.interpreter();
+		/********
+		List<Integer> input = new ArrayList<Integer>();
+		String s = errorMessage.getText();
+		String[] sp = s.split("\n");
+		for (int i = 2; i < sp.length; i++) {
+			//System.out.println(sp[i]);
+			input.add(Integer.parseInt(sp[i]));
+		}
+		output = gsa.interpreter(input);
+		for (int i = 0; i < output.size(); i++) {
+			consoleMessage += output.get(i);
+		}
+		errorMessage.setText(consoleMessage);
+		consoleMessage = "";
+		************/
+	}
+
+	//编译
 	private void compile() {
 		if (file == null) {
 			JOptionPane.showMessageDialog(null, "请先保存文件");
@@ -220,18 +256,40 @@ public class MyCompiler extends JFrame{
 		}
 		saveFile();
 		gsa = new GSAnalysis(file);
-		if (gsa.compile()) {
+		clean();
+		if (success = gsa.compile()) {
 			displayAllToken();
 			displayAllSymbol();
 			displayAllPcode();
-			errorMessage.setText("compile succeed!");
+			consoleMessage += "compile succeed!\n";
+			//consoleMessage += "请输入" + readNum + "个数，每行一个\n";
+			errorMessage.setText(consoleMessage);
 		} else {
-			errorMessage.setText("compile failed!");
+			displayErrorMessage();
+			consoleMessage += "compile failed!";
+			errorMessage.setText(consoleMessage);
+		}
+	}
+
+	//编译前清理一些表格和字符串
+	private void clean() {
+		flushTable(tokenTable);
+		flushTable(symbolTable);
+		flushTable(pcodeTable);
+		errorMessage.setText("");
+		consoleMessage = "";
+		success = false;
+	}
+
+	private void displayErrorMessage() {
+		consoleMessage = "";
+		errors = gsa.getErrorMessage();
+		for (int i = 0; i < errors.size(); i++) {
+			consoleMessage += errors.get(i) + "\n";
 		}
 	}
 
 	private void displayAllToken() {
-		flushTable(tokenTable);
 		DefaultTableModel model = (DefaultTableModel)tokenTable.getModel();
 		allToken = gsa.getAllToken();
 		for (int i = 0; i < allToken.size(); i++) {
@@ -242,7 +300,6 @@ public class MyCompiler extends JFrame{
 	}
 
 	private void displayAllSymbol() {
-		flushTable(symbolTable);
 		DefaultTableModel model = (DefaultTableModel)symbolTable.getModel();
 		allSymbol = gsa.getAllSymbol();
 		for (int i = 0; i < allSymbol.size(); i++) {
@@ -253,11 +310,14 @@ public class MyCompiler extends JFrame{
 	}
 
 	private void displayAllPcode() {
-		flushTable(pcodeTable);
 		DefaultTableModel model = (DefaultTableModel)pcodeTable.getModel();
 		allPcode = gsa.getAllPcode();
+		readNum = 0;
 		for (int i = 0; i < allPcode.size(); i++) {
 			PerPcode pcode = allPcode.get(i);
+			if (pcode.getF() == Operator.OPR && pcode.getA() == 16) {
+				readNum++;
+			}
 			Object[] rowValues = {pcode.getF(), pcode.getL(), pcode.getA()};
 			model.addRow(rowValues);
 		}
@@ -269,6 +329,7 @@ public class MyCompiler extends JFrame{
 		table.updateUI();//刷新表格 
 	}
 
+	//新建一个文件
     private void newFile() {
     	if (file == null) {  
             save.setVisible(true);  
@@ -281,6 +342,7 @@ public class MyCompiler extends JFrame{
         }  
     }
 
+    //保存文件
     private void saveFile() {
         try {  
             BufferedWriter bw = new BufferedWriter(new FileWriter(file));  
@@ -293,33 +355,6 @@ public class MyCompiler extends JFrame{
     }
 	
 	public static void main(String[] args) {
-		MyCompiler one = new MyCompiler();
-		/*****
-		try{
-			JFileChooser fc = new JFileChooser();
-			fc.showOpenDialog(null);
-			File file = fc.getSelectedFile();
-			if (file.isFile()) {
-				GSAnalysis gsa = new GSAnalysis(file);
-				gsa.showAllToken();
-				if (gsa.compile()) {
-					System.out.println("compile succeed!");
-					gsa.showAllSymbol();
-					gsa.showAllPcode();
-					System.out.println("Do you want to run it? Y/N");
-					Scanner in = new Scanner(System.in); 
-				    String name = in.nextLine(); 
-				    if (name.equals("Y") || name.equals("y")) {
-				    	gsa.interpreter();
-				    }
-				} else {
-					System.out.println("error happened!");
-				}
-			}
-		} catch (Exception ex) {
-			
-		}
-		******/
+		new MyCompiler();
 	}
-
 }

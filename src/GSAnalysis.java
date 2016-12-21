@@ -1,11 +1,13 @@
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class GSAnalysis {
-	LexAnalysis lex;
-	List<Token> allToken; //保存词法分析结果
-	AllPcode allPcode; //保存生成的Pcode
-	AllSymbol allSymbol; //符号表管理
+	private LexAnalysis lex;
+	private List<Token> allToken; //保存词法分析结果
+	private AllPcode allPcode; //保存生成的Pcode
+	private AllSymbol allSymbol; //符号表管理
+	private List<String> errorMessage; //保存错误信息
 
 	private boolean errorHappen = false; //记录编译过程中是否发生错误
 	private int tokenPtr = 0; //指向当前token的指针
@@ -21,6 +23,8 @@ public class GSAnalysis {
 		allPcode = new AllPcode();
 
 		allSymbol = new AllSymbol();
+		
+		errorMessage = new ArrayList<String>();
 	}
 
 	public boolean compile() {
@@ -270,8 +274,14 @@ public class GSAnalysis {
 		if (allToken.get(tokenPtr).getSt() == SymType.BEG) {
 			tokenPtr++;
 			statement();
-			while (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
-				tokenPtr++;
+			while (allToken.get(tokenPtr).getSt() == SymType.SEMIC || isHeadOfStatement()) {
+				if (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
+					tokenPtr++;
+				} else {
+					if (allToken.get(tokenPtr).getSt() != SymType.END) {
+						errorHandle(0, "");
+					}
+				}
 				if (allToken.get(tokenPtr).getSt() == SymType.END) {
 					errorHandle(21, "");
 					break;
@@ -496,7 +506,12 @@ public class GSAnalysis {
 			tokenPtr++;
 			int pos = allPcode.getPcodePtr();
 			statement();
-			while (allToken.get(tokenPtr).getSt() == SymType.SEMIC) {
+			while (allToken.get(tokenPtr).getSt() == SymType.SEMIC || isHeadOfStatement()) {
+				if (isHeadOfStatement()) {
+					errorHandle(1, "");
+				} else {
+					tokenPtr++;
+				}
 				if (allToken.get(tokenPtr).getSt() == SymType.UNT) {
 					errorHandle(22, "");
 					break;
@@ -622,110 +637,102 @@ public class GSAnalysis {
 		}
 	}
 
+	private boolean isHeadOfStatement() {
+		return (allToken.get(tokenPtr).getSt() == SymType.IF ||
+			allToken.get(tokenPtr).getSt() == SymType.WHI ||
+			allToken.get(tokenPtr).getSt() == SymType.CAL ||
+			allToken.get(tokenPtr).getSt() == SymType.REA ||
+			allToken.get(tokenPtr).getSt() == SymType.WRI ||
+			allToken.get(tokenPtr).getSt() == SymType.BEG ||
+			allToken.get(tokenPtr).getSt() == SymType.SYM ||
+			allToken.get(tokenPtr).getSt() == SymType.REP);
+	}
+
 	private void errorHandle(int k, String name) {
 		errorHappen = true;
+		String error = "";
 		switch(k) {
 			case -1: //常量定义不是const开头，变量定义不是var开头
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("wrong token"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "wrong token";
 				break;
 			case 0: //缺少分号
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing semicolon"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing ; before " + allToken.get(tokenPtr).getSt(); 
 				break;
 			case 1: //标识符不合法
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Identifier illegal"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Identifier illegal";
 				break;
 			case 2: //不合法的比较符
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("illegal compare symbol"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "illegal compare symbol"; 
 				break;
 			case 3: //常量赋值没用=
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Const assign must be ="); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Const assign must be =";
 				break;
 			case 4: //缺少（
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing ("); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing ("; 
 				break;
 			case 5: //缺少）
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing )"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missind )";
 				break;
 			case 6: //缺少begin
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing begin"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing begin";
 				break;
 			case 7: //缺少end
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing end"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing end";
 				break;
 			case 8: //缺少then
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing then"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing then";
 				break;
 			case 9: //缺少do
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing do"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing do";
 				break;
 			case 10: //call, write, read语句中，不存在标识符
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Not exist" + allToken.get(tokenPtr).getValue()); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Not exist" + allToken.get(tokenPtr).getValue();
 				break;
 			case 11: //该标识符不是proc类型
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println(allToken.get(tokenPtr).getValue() + "is not a procedure"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + allToken.get(tokenPtr).getValue() + "is not a procedure"; 
 				break;
 			case 12: //read, write语句中，该标识符不是var类型
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println(allToken.get(tokenPtr).getValue() + "is not a variable"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + allToken.get(tokenPtr).getValue() + "is not a variable";
 				break;
 			case 13: //赋值语句中，该标识符不是var类型
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println(name + "is not a varible"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + name + "is not a varible";
 				break;
 			case 14: //赋值语句中，该标识符不存在
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("not exist" + name); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "not exist " + name; 
 				break;
 			case 15: //该标识符已存在
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Aready exist" + name); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Already exist " + name; 
 				break;
 			case 16: //调用函数参数错误
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Number of parameters of procedure " + name + "is incorrect"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Number of parameters of procedure " + name + "is incorrect"; 
 				break;
 			case 17: //缺少.
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing ."); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing .";
 				break;
 			case 18: //多余代码
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("too much code after ."); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "too much code after .";
 				break;
 			case 19: //缺少until
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing until"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing until"; 
 				break;
 			case 20: //赋值符应为：=
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Assign must be :="); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Assign must be :=";
 				break;
 			case 21: //end前多了；
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("; is no need before end"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "; is no need before end";
 				break;
 			case 22: //until前多了；
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("; is no need before until"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "; is no need before ubtil";
 				break;
 			case 23: //缺少,
-				System.out.print("Error happened in line " + allToken.get(tokenPtr).getLine() + ":");
-				System.out.println("Missing ,"); 
+				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing ,";
 				break;
 		}
+		errorMessage.add(error);
+	}
+
+	public List<String> getErrorMessage() {
+		return errorMessage;
 	}
 
 	public void showAllToken() {
@@ -765,10 +772,14 @@ public class GSAnalysis {
 		return allPcode.getAllPcode();
 	}
 
+	public List<String> interpreter(List<Integer> input) {
+		Interpreter one = new Interpreter(input);
+		one.setAllPcode(allPcode);
+		one.interpreter();
+		return one.getOutput();
+	}
+
 	public void interpreter() {
-		if (errorHappen) {
-			return;
-		}
 		Interpreter one = new Interpreter();
 		one.setAllPcode(allPcode);
 		one.interpreter();
