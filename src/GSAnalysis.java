@@ -656,7 +656,11 @@ public class GSAnalysis {
 				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "wrong token";
 				break;
 			case 0: //缺少分号
-				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing ; before " + allToken.get(tokenPtr).getSt(); 
+				if (allToken.get(tokenPtr).getSt() == SymType.SYM) {
+					error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing ; before " + allToken.get(tokenPtr).getValue(); 
+				} else {
+					error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Missing ; before " + allToken.get(tokenPtr).getSt(); 
+				}
 				break;
 			case 1: //标识符不合法
 				error = "Error happened in line " + allToken.get(tokenPtr).getLine() + ":" + "Identifier illegal";

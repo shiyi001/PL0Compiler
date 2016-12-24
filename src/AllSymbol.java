@@ -40,10 +40,13 @@ public class AllSymbol {
     //存疑？
     //这样暴力查找好像存在一些问题
     public boolean isNowExists(String name, int level) {
-    	for (int i = 0; i < allSymbol.size(); i++) {
+    	for (int i = allSymbol.size(); i >= 0; i--) {
     		if (allSymbol.get(i).getName().equals(name) && allSymbol.get(i).getLevel() == level) {
     			return true;
     		}
+            if (allSymbol.get(i).getLevel() < level) {
+                break;
+            }
     	}
     	return false;
     }
@@ -52,10 +55,13 @@ public class AllSymbol {
     //存疑？
     //暴力查找存在问题
     public boolean isPreExists(String name, int level) {
-    	for (int i = 0; i < allSymbol.size(); i++) {
+    	for (int i = allSymbol.size(); i >= 0; i--) {
     		if (allSymbol.get(i).getName().equals(name) && allSymbol.get(i).getLevel() <= level) {
     			return true;
     		}
+            if (allSymbol.get(i).getType == proc) {
+                level--;
+            }
     	}
     	return false;
     }
