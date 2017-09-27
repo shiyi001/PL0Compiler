@@ -53,4 +53,4 @@ PL/0文法的EBNF表示如下：
 | Pcode表区  | 展示代码生成的所有Pcode |
 | 控制台     | 输出编译信息 |
 
-相关博客请前往[PL/0简单编译系统](http://www.jianshu.com/p/a6c93ca376d4http://www.jianshu.com/p/a6c93ca376d4)
+相关博客请前往[PL/0简单编译系统](http://www.jianshu.com/p/a6c93ca376d4)
